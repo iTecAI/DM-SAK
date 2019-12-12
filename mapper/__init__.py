@@ -48,9 +48,15 @@ def load_sprites_folder(path,sz=[16,16]):
                 for y in range(int(sheet.get_height()/sz[1])):
                     s = Surface(sz)
                     s.blit(sheet,[0,0],area=pygame.Rect(x*16,y*16,16,16))
-                    setattr(s,'tilenum',c)
-                    setattr(s,'click_func',tile_click_factory(s))
-                    sprites.append(s)
+                    has_color = False
+                    for nx in range(s.get_width()):
+                        for ny in range(s.get_height()):
+                            if s.get_at((nx,ny)) != (0,0,0):
+                                has_color = True
+                    if has_color:
+                        setattr(s,'tilenum',c)
+                        setattr(s,'click_func',tile_click_factory(s))
+                        sprites.append(s)
                     c += 1
     return sprites
 
@@ -83,14 +89,14 @@ def main(size=[1600,800]):
     while running:
         scsurf.fill([0,0,0])
         #load tilebar
-        splus = 264
+        splus = 352
         while True:
             try:
                 sprslice = SPRITES[tls.tilepos:tls.tilepos+splus]
                 break
             except IndexError:
                 splus -= 1
-        scount = 0
+        scount = 1
         x = 2
         y = 2
         for tile in sprslice:
