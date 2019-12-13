@@ -129,7 +129,8 @@ def main(size=[1920,1080]):
 
     #prepare GUI
     screen = pygame.display.set_mode(size,pygame.FULLSCREEN)
-    scsurf = pygame.Surface(size)
+    screen.convert_alpha()
+    scsurf = pygame.Surface(size,pygame.SRCALPHA)
     up_button = Button(pygame.Rect(0,0,146,30),'UP',tls.dec)
     down_button = Button(pygame.Rect(0,1050,146,30),'DOWN',tls.inc)
     #delete_button = imgButton(pygame.Rect(170,1034,32,32))
@@ -137,10 +138,14 @@ def main(size=[1920,1080]):
     current_rotation = 0
     relative_tile_pos = [0,0]
     relative_pos = [0,0]
+
+    current_select_rect = None
+    select_action = None
+    select_origin = None
     
     running = True
     while running:
-        scsurf.fill([255,255,255])
+        scsurf.fill([255,255,255,255])
         mp = pygame.mouse.get_pos()
         scr_cur_tile_pos = [constrain(round((mp[0]-16)/32)*32,160,1920),constrain(round((mp[1]-16)/32)*32,0,992)]
         relative_tile_pos = [int(scr_cur_tile_pos[0]/32) + relative_pos[0],int(scr_cur_tile_pos[1]/32) + relative_pos[1]]
@@ -182,6 +187,28 @@ def main(size=[1920,1080]):
                 x = 2
             scount += 1
 
+        #map grid
+        for x in range(55):
+            scsurf.fill([224, 224, 224],rect= pygame.Rect(x*32+160,0,1,1024))
+            for y in range(32):
+                scsurf.fill([224, 224, 224],rect= pygame.Rect(160,y*32,1760,1))
+
+        if select_action != None:
+            sc = pygame.mouse.get_pos()
+            sc = [constrain(sc[0],160,1920),constrain(sc[1],0,1024)]
+            current_select_rect.w = sc[0] - select_origin[0]
+            current_select_rect.h = sc[1] - select_origin[1]
+
+            if current_select_rect.w < 0:
+                current_select_rect = pygame.Rect(sc[0],select_origin[1],abs(current_select_rect.w),current_select_rect.h)
+            if current_select_rect.h < 0:
+                current_select_rect = pygame.Rect(current_select_rect.topleft[0],sc[1],current_select_rect.w,abs(current_select_rect.h))
+
+            sel_surf = pygame.Surface(current_select_rect.size,pygame.SRCALPHA)
+            sel_surf.fill((128, 183, 255, 100))
+            scsurf.blit(sel_surf,current_select_rect.topleft)
+            
+
         screen.blit(scsurf,[0,0])
 
         pygame.display.flip()
@@ -197,15 +224,26 @@ def main(size=[1920,1080]):
                     if event.button == 5:
                         tls.inc()
                 if event.button == 1 and event.pos[0]>160 and event.pos[1]<1024 and state_inst.current_tile:
-                    tile_temp = Tile(current_rotation,state_inst.current_tile,relative_tile_pos).getdict()
+                    '''tile_temp = Tile(current_rotation,state_inst.current_tile,relative_tile_pos).getdict()
                     if tuple(relative_tile_pos) in tileMap.keys():
                         tileMap[tuple(relative_tile_pos)].append(tile_temp)
                     else:
-                        tileMap[tuple(relative_tile_pos)] = [tile_temp]
+                        tileMap[tuple(relative_tile_pos)] = [tile_temp]'''
+                    current_select_rect = pygame.Rect(event.pos,(0,0))
+                    select_action = 1
+                    select_origin = event.pos
                 if event.button == 3 and event.pos[0]>160 and event.pos[1]<1024:
-                    if tuple(relative_tile_pos) in tileMap.keys():
+                    '''if tuple(relative_tile_pos) in tileMap.keys():
                         if len(tileMap[tuple(relative_tile_pos)]) > 0:
-                            tileMap[tuple(relative_tile_pos)].pop()
+                            tileMap[tuple(relative_tile_pos)].pop()'''
+                    current_select_rect = pygame.Rect(event.pos,(0,0))
+                    select_action = 2
+                    select_origin = event.pos
+            if event.type == pygame.MOUSEBUTTONUP:
+                if select_action:
+                    select_action = None
+                    current_select_rect = None
+                    select_origin = None
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
                     relative_pos[1] -= 1
