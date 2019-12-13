@@ -142,6 +142,12 @@ def main(size=[1920,1080]):
     current_select_rect = None
     select_action = None
     select_origin = None
+
+    #place selection detector rects
+    selection_det_rects = []
+    for x in range(55):
+        for y in range(32):
+            selection_det_rects.append(pygame.Rect(x*32+160,y*32,32,32))
     
     running = True
     while running:
@@ -149,8 +155,6 @@ def main(size=[1920,1080]):
         mp = pygame.mouse.get_pos()
         scr_cur_tile_pos = [constrain(round((mp[0]-16)/32)*32,160,1920),constrain(round((mp[1]-16)/32)*32,0,992)]
         relative_tile_pos = [int(scr_cur_tile_pos[0]/32) + relative_pos[0],int(scr_cur_tile_pos[1]/32) + relative_pos[1]]
-        if state_inst.current_tile:
-            scsurf.blit(pygame.transform.scale(state_inst.current_tile,[32,32]),scr_cur_tile_pos)
 
         for p in list(tileMap.keys()):
             for layer in tileMap[p]:
@@ -189,9 +193,12 @@ def main(size=[1920,1080]):
 
         #map grid
         for x in range(55):
-            scsurf.fill([224, 224, 224],rect= pygame.Rect(x*32+160,0,1,1024))
+            scsurf.fill([224, 224, 224, 100],rect= pygame.Rect(x*32+160,0,1,1024))
             for y in range(32):
-                scsurf.fill([224, 224, 224],rect= pygame.Rect(160,y*32,1760,1))
+                scsurf.fill([224, 224, 224, 100],rect= pygame.Rect(160,y*32,1760,1))
+
+        if state_inst.current_tile:
+            scsurf.blit(pygame.transform.scale(state_inst.current_tile,[32,32]),scr_cur_tile_pos)
 
         if select_action != None:
             sc = pygame.mouse.get_pos()
@@ -241,6 +248,25 @@ def main(size=[1920,1080]):
                     select_origin = event.pos
             if event.type == pygame.MOUSEBUTTONUP:
                 if select_action:
+
+                    for rect in current_select_rect.collidelistall(selection_det_rects):
+                        crect = selection_det_rects[rect]
+                        crx = crect.topleft[0]
+                        cry = crect.topleft[1]
+                        relpos = [int(crx/32) + relative_pos[0],int(cry/32) + relative_pos[1]]
+                        if select_action == 1:
+                            tile_temp = Tile(current_rotation,state_inst.current_tile,relpos).getdict()
+                            if tuple(relpos) in tileMap.keys():
+                                tileMap[tuple(relpos)].append(tile_temp)
+                            else:
+                                tileMap[tuple(relpos)] = [tile_temp]
+                        if select_action == 2:
+                            if tuple(relpos) in tileMap.keys():
+                                if len(tileMap[tuple(relpos)]) > 0:
+                                    tileMap[tuple(relpos)].pop()
+                                if len(tileMap[tuple(relpos)]) == 0:
+                                    del tileMap[tuple(relpos)]
+
                     select_action = None
                     current_select_rect = None
                     select_origin = None
