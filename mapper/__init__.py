@@ -2,21 +2,21 @@ import pygame,os,time,json
 pygame.init()
 
 #init constants
-FONTS = {
+FONTS = { #font dict
     'primary':pygame.font.Font(os.path.join('assets','fonts','primary.ttf'),16),
     'secondary':pygame.font.Font(os.path.join('assets','fonts','secondary.ttf'),16)
 }
 
-class STATE:
+class STATE: #global statekeeper
     def __init__(self):
         self.current_tile = None
 
 state_inst = STATE()
 
-class Surface(pygame.Surface):
+class Surface(pygame.Surface): #editable class
     pass
 
-class Button:
+class Button: #button w/ text
     def __init__(self,rect,text,clickf,color=(222, 222, 222)):
         global FONTS
         self.is_clicked = False
@@ -35,7 +35,7 @@ class Button:
         if not (self.rect.collidepoint(pygame.mouse.get_pos()) and pygame.mouse.get_pressed()[0]):
             self.is_clicked = False
 
-class imgButton(Button):
+class imgButton(Button): #button w/ image
     def __init__(self,rect,path,clickf,color=(222, 222, 222)):
         global FONTS
         self.is_clicked = False
@@ -46,14 +46,14 @@ class imgButton(Button):
         self.click = clickf
         self.rect = rect
 
-def tile_click_factory(tile):
+def tile_click_factory(tile): #make a tilebar click function
     def f():
         global state_inst
         state_inst.current_tile = tile
     
     return f
 
-def load_sprites_folder(path,sz=[16,16]):
+def load_sprites_folder(path,sz=[16,16]): #load sprites from sheets
     sprites = []
     c = 0
     for i in os.listdir(path):
@@ -76,7 +76,7 @@ def load_sprites_folder(path,sz=[16,16]):
     return sprites
 
 
-class tiles:
+class tiles: #data storage about tilebar
     def __init__(self,mx):
         self.tilepos = 0
         self.mx = mx
@@ -89,14 +89,14 @@ class tiles:
         if self.tilepos < 0:
             self.tilepos = 0
 
-def constrain(val,mini,maxi):
+def constrain(val,mini,maxi): #constrains vals between mini and maxi, inclusive
     if val < mini:
         return mini
     if val > maxi:
         return maxi
     return val
 
-class Tile:
+class Tile: #tile storage class, has json and dict funcs
     def __init__(self,rotation,tile,pos):
         self.tile = pygame.transform.rotate(tile,rotation)
         self.id = tile.tilenum
@@ -151,11 +151,15 @@ def main(size=[1920,1080]):
     
     running = True
     while running:
+        #fill screen
         scsurf.fill([255,255,255,255])
+
+        #get mouse pos translations
         mp = pygame.mouse.get_pos()
         scr_cur_tile_pos = [constrain(round((mp[0]-16)/32)*32,160,1920),constrain(round((mp[1]-16)/32)*32,0,992)]
         relative_tile_pos = [int(scr_cur_tile_pos[0]/32) + relative_pos[0],int(scr_cur_tile_pos[1]/32) + relative_pos[1]]
 
+        #draw map
         for p in list(tileMap.keys()):
             for layer in tileMap[p]:
                 bp = [(layer['position'][0]-relative_pos[0])*32,(layer['position'][1]-relative_pos[1])*32]
@@ -170,6 +174,7 @@ def main(size=[1920,1080]):
         scsurf.blit(down_button.surface,down_button.rect.topleft)
         up_button.check()
         down_button.check()
+
         #load tilebar
         while True:
             try:
@@ -197,9 +202,11 @@ def main(size=[1920,1080]):
             for y in range(32):
                 scsurf.fill([224, 224, 224, 100],rect= pygame.Rect(160,y*32,1760,1))
 
+        #cursor
         if state_inst.current_tile:
             scsurf.blit(pygame.transform.scale(state_inst.current_tile,[32,32]),scr_cur_tile_pos)
 
+        #draw selection box
         if select_action != None:
             sc = pygame.mouse.get_pos()
             sc = [constrain(sc[0],160,1920),constrain(sc[1],0,1024)]
@@ -220,6 +227,8 @@ def main(size=[1920,1080]):
 
         pygame.display.flip()
         
+
+        #run the event loop
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -231,18 +240,10 @@ def main(size=[1920,1080]):
                     if event.button == 5:
                         tls.inc()
                 if event.button == 1 and event.pos[0]>160 and event.pos[1]<1024 and state_inst.current_tile:
-                    '''tile_temp = Tile(current_rotation,state_inst.current_tile,relative_tile_pos).getdict()
-                    if tuple(relative_tile_pos) in tileMap.keys():
-                        tileMap[tuple(relative_tile_pos)].append(tile_temp)
-                    else:
-                        tileMap[tuple(relative_tile_pos)] = [tile_temp]'''
                     current_select_rect = pygame.Rect(event.pos,(0,0))
                     select_action = 1
                     select_origin = event.pos
                 if event.button == 3 and event.pos[0]>160 and event.pos[1]<1024:
-                    '''if tuple(relative_tile_pos) in tileMap.keys():
-                        if len(tileMap[tuple(relative_tile_pos)]) > 0:
-                            tileMap[tuple(relative_tile_pos)].pop()'''
                     current_select_rect = pygame.Rect(event.pos,(0,0))
                     select_action = 2
                     select_origin = event.pos
