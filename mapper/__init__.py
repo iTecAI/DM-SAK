@@ -280,10 +280,3 @@ def main(size=[1920,1080]):
                     relative_pos[0] -= 1
                 if event.key == pygame.K_RIGHT:
                     relative_pos[0] += 1
-                
-                
-        
-
-
-
-
