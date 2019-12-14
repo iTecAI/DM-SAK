@@ -1,5 +1,5 @@
 import pygame,os,time,json
-from easygui import filesavebox
+from easygui import filesavebox, fileopenbox, ynbox
 from functools import partial
 pygame.init()
 
@@ -87,15 +87,6 @@ def tile_click_factory(tile): #make a tilebar click function
     
     return f
 
-def save(tmap):
-    path = filesavebox(title='Save map',filetypes='.json')
-    with open(path,'w') as f:
-        savedict = {}
-        for k in tmap.keys():
-            savedict[str(k)] = []
-            for t in tmap[k]:
-                savedict[str(k)].append(t['object'].jsonize())
-        json.dump(savedict,f)
 
 def load_sprites_folder(path,sz=[16,16]): #load sprites from sheets
     sprites = []
@@ -169,6 +160,34 @@ class Tile: #tile storage class, has json and dict funcs
             'object':self
         }
 
+    @classmethod
+    def create(self,dct,sprites):
+        return Tile(dct['rotation'],sprites[dct['tile']],dct['position'])
+
+
+def save(tmap,path=None):
+    if not path:
+        path = filesavebox(title='Save map',filetypes=['.json'],default='*.json')
+    if path:
+        with open(path,'w') as f:
+            savedict = {}
+            for k in tmap.keys():
+                savedict[str(k)] = []
+                for t in tmap[k]:
+                    savedict[str(k)].append(t['object'].jsonize())
+            json.dump(savedict,f)
+    return path
+
+def load(sprites):
+    path = fileopenbox(title='Load tile map',filetypes=['.json'],default='*.json')
+    with open(path,'r') as f:
+        dct = json.load(f)
+        out = {}
+        for k in dct.keys():
+            out[eval(k)] = []
+            for l in dct[k]:
+                out[eval(k)].append(Tile.create(l,sprites).getdict())
+    return out
 
 #main function
 
@@ -176,21 +195,25 @@ def placeholder():
     pass
 
 def main(size=[1920,1080]):
+    resolution = size
+    save_path = None
     SPRITES = []
     SPRITES.extend(load_sprites_folder(os.path.join('assets','tiles','DawnLike','Objects')))
     SPRITES.extend(load_sprites_folder(os.path.join('assets','tiles','DawnLike','Items')))
     splus = 116
     tls = tiles(len(SPRITES)-splus)
     print('Loaded sprites:',len(SPRITES))
+    #tileMap = load(SPRITES)
 
     #prepare GUI
-    screen = pygame.display.set_mode(size,pygame.FULLSCREEN)
+    screen = pygame.display.set_mode(size,pygame.SCALED)
     screen.convert_alpha()
-    scsurf = pygame.Surface(size,pygame.SRCALPHA)
+    scsurf = pygame.Surface([1920,1080],pygame.SRCALPHA)
     up_button = Button(pygame.Rect(0,0,146,30),'UP',tls.decDown)
     down_button = Button(pygame.Rect(0,1050,146,30),'DOWN',tls.incUp)
     grid_check = CheckBox('Grid',(170,1040))
     save_button = imgButton(pygame.Rect(250,1035,40,40),os.path.join('assets','icons','save.png'),placeholder)
+    load_button = imgButton(pygame.Rect(290,1035,40,40),os.path.join('assets','icons','load.png'),placeholder)
     #delete_button = imgButton(pygame.Rect(170,1034,32,32))
     tileMap = {}
     current_rotation = 0
@@ -232,12 +255,18 @@ def main(size=[1920,1080]):
         scsurf.blit(down_button.surface,down_button.rect.topleft)
         scsurf.blit(grid_check.surface,grid_check.rect.topleft)
         scsurf.blit(save_button.surface,save_button.rect.topleft)
+        scsurf.blit(load_button.surface,load_button.rect.topleft)
         up_button.check()
         down_button.check()
         grid_check.check()
         save_button.check()
+        load_button.check()
         if save_button.is_clicked:
-            save(tileMap)
+            save_path = save(tileMap)
+        if load_button.is_clicked:
+            if ynbox(msg='Save before loading new map?',title='Save?'):
+                save(tileMap,save_path)
+            tileMap = load(SPRITES)
 
         #load tilebar
         while True:
