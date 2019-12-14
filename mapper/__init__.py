@@ -1,4 +1,6 @@
 import pygame,os,time,json
+from easygui import filesavebox
+from functools import partial
 pygame.init()
 
 #init constants
@@ -42,9 +44,41 @@ class imgButton(Button): #button w/ image
         self.surface = pygame.Surface(rect.size)
         self.surface.fill(color)
         img = pygame.transform.scale(pygame.image.load(path),rect.size)
-        self.surface.blit(img,rect.topleft)
+        self.surface.blit(img,(0,0))
         self.click = clickf
         self.rect = rect
+
+class CheckBox: #a checkbox
+    def __init__(self,text,pos,checked=True,s=20):
+        global FONTS
+        self.checked=checked
+        self.is_clicked=False
+        self.text=FONTS['primary'].render(text,True,(0,0,0))
+        if s > self.text.get_height():
+            h=s
+        else:
+            h=self.text.get_height()
+        self.surface = pygame.Surface((self.text.get_width()+s+20,h+8))
+        self.surface.fill((235, 235, 235))
+        self.surface.blit(self.text,(4,(4+h/2)-(self.text.get_height()/2)))
+        self.fill_rect = pygame.Rect(self.text.get_width()+16,4,s,s)
+        self.rect = self.surface.get_rect()
+        self.rect.topleft = pos
+    
+    def check(self):
+        if self.rect.collidepoint(pygame.mouse.get_pos()) and pygame.mouse.get_pressed()[0] and not self.is_clicked:
+            if self.checked:
+                self.checked = False
+            else:
+                self.checked = True
+            self.is_clicked = True
+        if not (self.rect.collidepoint(pygame.mouse.get_pos()) and pygame.mouse.get_pressed()[0]):
+            self.is_clicked = False
+        
+        if self.checked:
+            self.surface.fill((0,255,0),rect=self.fill_rect)
+        else:
+            self.surface.fill((255,0,0),rect=self.fill_rect)
 
 def tile_click_factory(tile): #make a tilebar click function
     def f():
@@ -52,6 +86,16 @@ def tile_click_factory(tile): #make a tilebar click function
         state_inst.current_tile = tile
     
     return f
+
+def save(tmap):
+    path = filesavebox(title='Save map',filetypes='.json')
+    with open(path,'w') as f:
+        savedict = {}
+        for k in tmap.keys():
+            savedict[str(k)] = []
+            for t in tmap[k]:
+                savedict[str(k)].append(t['object'].jsonize())
+        json.dump(savedict,f)
 
 def load_sprites_folder(path,sz=[16,16]): #load sprites from sheets
     sprites = []
@@ -88,6 +132,14 @@ class tiles: #data storage about tilebar
         self.tilepos -= 4
         if self.tilepos < 0:
             self.tilepos = 0
+    def decDown(self):
+        self.tilepos -= 116
+        if self.tilepos < 0:
+            self.tilepos = 0
+    def incUp(self):
+        self.tilepos += 116
+        if self.tilepos > self.mx:
+            self.tilepos = self.mx
 
 def constrain(val,mini,maxi): #constrains vals between mini and maxi, inclusive
     if val < mini:
@@ -103,11 +155,11 @@ class Tile: #tile storage class, has json and dict funcs
         self.rot = rotation
         self.pos = pos
     def jsonize(self):
-        return json.dumps({
+        return {
             'tile':self.id,
             'rotation':self.rot,
             'position':self.pos
-        })
+        }
     def getdict(self):
         return {
             'tile':self.id,
@@ -119,6 +171,10 @@ class Tile: #tile storage class, has json and dict funcs
 
 
 #main function
+
+def placeholder():
+    pass
+
 def main(size=[1920,1080]):
     SPRITES = []
     SPRITES.extend(load_sprites_folder(os.path.join('assets','tiles','DawnLike','Objects')))
@@ -131,8 +187,10 @@ def main(size=[1920,1080]):
     screen = pygame.display.set_mode(size,pygame.FULLSCREEN)
     screen.convert_alpha()
     scsurf = pygame.Surface(size,pygame.SRCALPHA)
-    up_button = Button(pygame.Rect(0,0,146,30),'UP',tls.dec)
-    down_button = Button(pygame.Rect(0,1050,146,30),'DOWN',tls.inc)
+    up_button = Button(pygame.Rect(0,0,146,30),'UP',tls.decDown)
+    down_button = Button(pygame.Rect(0,1050,146,30),'DOWN',tls.incUp)
+    grid_check = CheckBox('Grid',(170,1040))
+    save_button = imgButton(pygame.Rect(250,1035,40,40),os.path.join('assets','icons','save.png'),placeholder)
     #delete_button = imgButton(pygame.Rect(170,1034,32,32))
     tileMap = {}
     current_rotation = 0
@@ -172,8 +230,14 @@ def main(size=[1920,1080]):
         scsurf.fill([171, 171, 171],rect=pygame.Rect(160,1024,1760,56))
         scsurf.blit(up_button.surface,up_button.rect.topleft)
         scsurf.blit(down_button.surface,down_button.rect.topleft)
+        scsurf.blit(grid_check.surface,grid_check.rect.topleft)
+        scsurf.blit(save_button.surface,save_button.rect.topleft)
         up_button.check()
         down_button.check()
+        grid_check.check()
+        save_button.check()
+        if save_button.is_clicked:
+            save(tileMap)
 
         #load tilebar
         while True:
@@ -197,14 +261,15 @@ def main(size=[1920,1080]):
             scount += 1
 
         #map grid
-        for x in range(55):
-            scsurf.fill([224, 224, 224, 100],rect= pygame.Rect(x*32+160,0,1,1024))
-            for y in range(32):
-                scsurf.fill([224, 224, 224, 100],rect= pygame.Rect(160,y*32,1760,1))
+        if grid_check.checked:
+            for x in range(55):
+                scsurf.fill([224, 224, 224, 100],rect= pygame.Rect(x*32+160,0,1,1024))
+                for y in range(32):
+                    scsurf.fill([224, 224, 224, 100],rect= pygame.Rect(160,y*32,1760,1))
 
         #cursor
         if state_inst.current_tile:
-            scsurf.blit(pygame.transform.scale(state_inst.current_tile,[32,32]),scr_cur_tile_pos)
+            scsurf.blit(pygame.transform.rotate(pygame.transform.scale(state_inst.current_tile,[32,32]),current_rotation),scr_cur_tile_pos)
 
         #draw selection box
         if select_action != None:
@@ -272,11 +337,19 @@ def main(size=[1920,1080]):
                     current_select_rect = None
                     select_origin = None
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
+                if event.key == pygame.K_w:
                     relative_pos[1] -= 1
-                if event.key == pygame.K_DOWN:
+                if event.key == pygame.K_s:
                     relative_pos[1] += 1
-                if event.key == pygame.K_LEFT:
+                if event.key == pygame.K_a:
                     relative_pos[0] -= 1
-                if event.key == pygame.K_RIGHT:
+                if event.key == pygame.K_d:
                     relative_pos[0] += 1
+                if event.key == pygame.K_UP:
+                    current_rotation = 0
+                if event.key == pygame.K_LEFT:
+                    current_rotation = 90
+                if event.key == pygame.K_DOWN:
+                    current_rotation = 180
+                if event.key == pygame.K_RIGHT:
+                    current_rotation = 270
