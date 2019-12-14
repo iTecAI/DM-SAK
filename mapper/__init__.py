@@ -12,6 +12,7 @@ FONTS = { #font dict
 class STATE: #global statekeeper
     def __init__(self):
         self.current_tile = None
+        self.grid = True
 
 state_inst = STATE()
 
@@ -189,6 +190,35 @@ def load(sprites):
                 out[eval(k)].append(Tile.create(l,sprites).getdict())
     return out
 
+def export(tmap):
+    path = filesavebox(title='Export',default='*.png')
+    posx = {}
+    posy = {}
+    for n in tmap.keys():
+        posx[n[0]] = n
+        posy[n[1]] = n
+    spx = sorted(list(posx.keys()))
+    spy = sorted(list(posy.keys()))
+    w = abs(spx[0]-spx[len(spx)-1])+1
+    h = abs(spy[0]-spy[len(spy)-1])+1
+    minx = spx[0]
+    miny = spy[0]
+    surf = pygame.Surface((w*32,h*32))
+    for x in range(w):
+        for y in range(h):
+            try:
+                _tile = tmap[(x+minx,y+miny)]
+            except KeyError:
+                continue
+            for L in _tile:
+                surf.blit(pygame.transform.scale(L['rendered'],(32,32)),(x*32,y*32))
+    if state_inst.grid:
+        for x in range(w):
+            surf.fill([224, 224, 224, 100],rect=pygame.Rect(x*32,0,1,h*32))
+            for y in range(h):
+                surf.fill([224, 224, 224, 100],rect= pygame.Rect(0,y*32,w*32,1))
+    pygame.image.save(surf,path)
+
 #main function
 
 def placeholder():
@@ -214,6 +244,7 @@ def main(size=[1920,1080]):
     grid_check = CheckBox('Grid',(170,1040))
     save_button = imgButton(pygame.Rect(250,1035,40,40),os.path.join('assets','icons','save.png'),placeholder)
     load_button = imgButton(pygame.Rect(290,1035,40,40),os.path.join('assets','icons','load.png'),placeholder)
+    export_button = imgButton(pygame.Rect(330,1035,40,40),os.path.join('assets','icons','export.png'),placeholder)
     #delete_button = imgButton(pygame.Rect(170,1034,32,32))
     tileMap = {}
     current_rotation = 0
@@ -256,17 +287,21 @@ def main(size=[1920,1080]):
         scsurf.blit(grid_check.surface,grid_check.rect.topleft)
         scsurf.blit(save_button.surface,save_button.rect.topleft)
         scsurf.blit(load_button.surface,load_button.rect.topleft)
+        scsurf.blit(export_button.surface,export_button.rect.topleft)
         up_button.check()
         down_button.check()
         grid_check.check()
         save_button.check()
         load_button.check()
+        export_button.check()
         if save_button.is_clicked:
             save_path = save(tileMap)
         if load_button.is_clicked:
             if ynbox(msg='Save before loading new map?',title='Save?'):
                 save(tileMap,save_path)
             tileMap = load(SPRITES)
+        if export_button.is_clicked:
+            export(tileMap)
 
         #load tilebar
         while True:
@@ -290,6 +325,7 @@ def main(size=[1920,1080]):
             scount += 1
 
         #map grid
+        state_inst.grid = grid_check.checked
         if grid_check.checked:
             for x in range(55):
                 scsurf.fill([224, 224, 224, 100],rect= pygame.Rect(x*32+160,0,1,1024))
