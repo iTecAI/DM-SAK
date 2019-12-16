@@ -1,14 +1,13 @@
 import pygame
 pygame.init()
 
-def kwarg_defaults(kw,**kwargs):
-    out = {}
+def kwarg_defaults(obj, kw,**kwargs):
     for k in kwargs.keys():
         try:
-            out[k] = kw[k]
+            setattr(obj,k,kw[k])
         except KeyError:
-            out[k] = kwargs[k]
-    return out
+            setattr(obj,k,kwargs[k])
+    
 
 class GUI:
     def init(self,kwargs):
@@ -24,13 +23,12 @@ class GUI:
     def add_child(self,ui):
         self.children.append(ui)
 
-    def _render(self):
-        self.render()
+    def _render(self,obj):
         for i in self.children:
-            i.render(self)
+            i.render(self,obj)
 
-    def render(self):
-        pass
+    def render(self,obj):
+        self._render(obj)
 
     def _check(self,events=None):
         if not events:
@@ -44,4 +42,24 @@ class GUI:
 
 class Container(GUI):
     def init(self,kwargs):
-        kwargs = kwarg_defaults(kwargs, background=(255,255,255,255))
+        kwarg_defaults(self, kwargs, background=(255,255,255), border=(0,0,0))
+
+    def render(self):
+        print('rendered')
+        print(self.border)
+        x,y = self.pos
+        print(x,y)
+        self.surface.fill(self.background,rect=self.rect)
+        self.surface.fill(self.border,rect=pygame.Rect(x,y,self.rect.width,1))
+        self.surface.fill(self.border,rect=pygame.Rect(x,y,1,self.rect.height))
+        self.surface.fill(self.border,rect=pygame.Rect(x+self.rect.width,y,self.rect.width,self.rect.height))
+        self.surface.fill(self.border,rect=pygame.Rect(x,y+self.rect.height,self.rect.width,self.rect.height))
+
+
+scrn = pygame.display.set_mode([500,500])
+gui = GUI(scrn,(0,0))
+gui.add_child(Container(scrn,(100,100)))
+gui.render(gui)
+pygame.display.flip()
+while True:
+    pass
