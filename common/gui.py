@@ -44,12 +44,13 @@ class Button(BaseElement):
         super().__init__(rect,style=style)
         self.click = click
         self.content = content
-        self.rect = self.surface.get_rect()
-        self.rect.size = [x+10 for x in content.get_size()]
+        self.rect = pygame.Rect(self.pos,self.surface.get_rect().size)
+        self.rect.size = content.get_size()
+        print(self.rect.size,self.rect.topleft)
         self.content_surface = pygame.Surface(self.rect.size,pygame.SRCALPHA)
         self.surface = pygame.Surface(self.rect.size,pygame.SRCALPHA)
         self.content_surface.fill(self.style['background_color'])
-        self.content_surface.blit(content,(5,5))
+        self.content_surface.blit(content,(0,0))
         self.clicked = False
     
     def render(self):
