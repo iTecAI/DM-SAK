@@ -8,58 +8,72 @@ def kwarg_defaults(obj, kw,**kwargs):
         except KeyError:
             setattr(obj,k,kwargs[k])
     
+DEFAULT_STYLE = dict(
+    background_color=(255,255,255)
+)
 
-class GUI:
-    def init(self,kwargs):
-        pass
+def _nothing_():
+    pass
 
-    def __init__(self,surface,pos,**kwargs):
-        self.surface = surface
-        self.pos = pos
-        self.rect = surface.get_rect()
+def pr():
+    print('click')
+
+class BaseElement:
+    def __init__(self,rect,style=DEFAULT_STYLE):
+        self.pos = rect.topleft
+        self.size = rect.size
+        self.surface = pygame.Surface(self.size,pygame.SRCALPHA)
         self.children = []
-        self.init(kwargs)
+        self.style = style
     
-    def add_child(self,ui):
-        self.children.append(ui)
-
-    def _render(self,obj):
-        for i in self.children:
-            i.render(self,obj)
-
-    def render(self,obj):
-        self._render(obj)
-
-    def _check(self,events=None):
-        if not events:
-            events = [e.type for e in pygame.event.get()]
-        self.check(events)
-        for i in self.children:
-            i._check(events)
-        
-    def check(self,events):
-        pass
-
-class Container(GUI):
-    def init(self,kwargs):
-        kwarg_defaults(self, kwargs, background=(255,255,255), border=(0,0,0))
-
+    def add_child(self,child):
+        self.children.append(child)
+    
     def render(self):
-        print('rendered')
-        print(self.border)
-        x,y = self.pos
-        print(x,y)
-        self.surface.fill(self.background,rect=self.rect)
-        self.surface.fill(self.border,rect=pygame.Rect(x,y,self.rect.width,1))
-        self.surface.fill(self.border,rect=pygame.Rect(x,y,1,self.rect.height))
-        self.surface.fill(self.border,rect=pygame.Rect(x+self.rect.width,y,self.rect.width,self.rect.height))
-        self.surface.fill(self.border,rect=pygame.Rect(x,y+self.rect.height,self.rect.width,self.rect.height))
+        self.surface.fill(self.style['background_color'])
+        for child in self.children:
+            self.surface.blit(child.render(),child.pos)
+        return self.surface
+
+    def check(self,events):
+        for child in self.children:
+            child.check(events)
+
+class Button(BaseElement):
+    def __init__(self,rect,style=DEFAULT_STYLE,click=_nothing_,content=pygame.Surface((0,0))):
+        super().__init__(rect,style=style)
+        self.click = click
+        self.content = content
+        self.rect = self.surface.get_rect()
+        self.rect.size = [x+10 for x in content.get_size()]
+        self.content_surface = pygame.Surface(self.rect.size,pygame.SRCALPHA)
+        self.surface = pygame.Surface(self.rect.size,pygame.SRCALPHA)
+        self.content_surface.fill(self.style['background_color'])
+        self.content_surface.blit(content,(5,5))
+        self.clicked = False
+    
+    def render(self):
+        self.surface.fill(self.style['background_color'])
+        self.surface.blit(self.content_surface,(0,0))
+
+        return self.surface
+    
+    def check(self,events):
+        for event in events:
+            if event.type == pygame.MOUSEBUTTONDOWN and self.rect.collidepoint(event.pos):
+                self.clicked = True
+                self.click()
+            if event.type == pygame.MOUSEBUTTONUP:
+                self.clicked = False
+    
 
 
-scrn = pygame.display.set_mode([500,500])
-gui = GUI(scrn,(0,0))
-gui.add_child(Container(scrn,(100,100)))
-gui.render(gui)
+
+
+scrn = pygame.display.set_mode((200,200))
+scrn.fill((255,255,255))
+ele = Button(pygame.Rect(50,50,100,100),click=pr,content=pygame.Surface((100,100)))
+scrn.blit(ele.render(),ele.pos)
 pygame.display.flip()
 while True:
-    pass
+    ele.check(pygame.event.get())
