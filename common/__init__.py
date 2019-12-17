@@ -1,2 +1,2 @@
 from common.p2p import Node
-from common.gui import *
+from common import gui

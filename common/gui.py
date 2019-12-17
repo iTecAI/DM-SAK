@@ -9,7 +9,9 @@ def kwarg_defaults(obj, kw,**kwargs):
             setattr(obj,k,kwargs[k])
     
 DEFAULT_STYLE = dict(
-    background_color=(255,255,255)
+    background_color=(255,255,255),
+    hover_color=(127,127,127),
+    padding=5
 )
 
 def _nothing_():
@@ -38,43 +40,88 @@ class BaseElement:
     def check(self,events):
         for child in self.children:
             child.check(events)
+    
+    def available(self):
+        obj = self
+        class Available:
+            above=obj.pos[1]
+            below=obj.pos[1]+self.size[1]
+            left=obj.pos[0]
+            right=obj.pos[0]+self.size[0]
 
-class Button(BaseElement):
-    def __init__(self,rect,style=DEFAULT_STYLE,click=_nothing_,content=pygame.Surface((0,0))):
+        return Available
+
+class ContentBox(BaseElement):
+    def __init__(self,rect,style=DEFAULT_STYLE,content=pygame.Surface((0,0))):
         super().__init__(rect,style=style)
-        self.click = click
         self.content = content
         self.rect = pygame.Rect(self.pos,self.surface.get_rect().size)
-        self.rect.size = content.get_size()
-        print(self.rect.size,self.rect.topleft)
-        self.content_surface = pygame.Surface(self.rect.size,pygame.SRCALPHA)
+        size = content.get_size()
+        
+        if size[0] > self.rect.size[0]:
+            self.rect.w = size[0]+2*self.style['padding']
+        if size[1] > self.rect.size[1]:
+            self.rect.h = size[1]+2*self.style['padding']
+        self.size = self.rect.size
+
         self.surface = pygame.Surface(self.rect.size,pygame.SRCALPHA)
-        self.content_surface.fill(self.style['background_color'])
-        self.content_surface.blit(content,(0,0))
-        self.clicked = False
+        self.surface.fill(self.style['background_color'])
+        self.content_surface_pos = [(self.rect.w/2) - content.get_width()/2+self.style['padding'],(self.rect.h/2) - content.get_height()/2+self.style['padding']]
+        self.surface.blit(content,self.content_surface_pos)
+
     
     def render(self):
         self.surface.fill(self.style['background_color'])
-        self.surface.blit(self.content_surface,(0,0))
+        self.surface.blit(self.content,self.content_surface_pos)
+
+        return self.surface
+    
+    def check(self,events):
+        pass
+
+class Button(ContentBox):
+    def __init__(self,rect,style=DEFAULT_STYLE,click=_nothing_,content=pygame.Surface((0,0))):
+        super().__init__(rect,style=style,content=content)
+        self.click = click
+        self._clicked = False
+    
+    def check(self,events):
+        for event in events:
+            if event.type == pygame.MOUSEBUTTONDOWN and self.rect.collidepoint(event.pos):
+                self._clicked = True
+                self.click()
+            if event.type == pygame.MOUSEBUTTONUP:
+                self._clicked = False
+    
+    def clicked(self):
+        if self._clicked:
+            self._clicked = False
+            return True
+        return False
+
+class HoverButton(Button):
+    def __init__(self,rect,style=DEFAULT_STYLE,click=_nothing_,content=pygame.Surface((0,0))):
+        super().__init__(rect,style=style,content=content,click=click)
+        self.hovered = False
+
+    def render(self):
+        if self.hovered:
+            self.surface.fill(self.style['hover_color'])
+        else:
+            self.surface.fill(self.style['background_color'])
+        self.surface.blit(self.content,self.content_surface_pos)
 
         return self.surface
     
     def check(self,events):
         for event in events:
             if event.type == pygame.MOUSEBUTTONDOWN and self.rect.collidepoint(event.pos):
-                self.clicked = True
+                self._clicked = True
                 self.click()
             if event.type == pygame.MOUSEBUTTONUP:
-                self.clicked = False
-    
-
-
-
-
-scrn = pygame.display.set_mode((200,200))
-scrn.fill((255,255,255))
-ele = Button(pygame.Rect(50,50,100,100),click=pr,content=pygame.Surface((100,100)))
-scrn.blit(ele.render(),ele.pos)
-pygame.display.flip()
-while True:
-    ele.check(pygame.event.get())
+                self._clicked = False
+            if event.type == pygame.MOUSEMOTION:
+                if self.rect.collidepoint(event.pos):
+                    self.hovered = True
+                else:
+                    self.hovered = False
