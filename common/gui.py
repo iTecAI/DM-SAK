@@ -55,6 +55,14 @@ class BaseElement:
 
         return Available
 
+class Frame(BaseElement):
+    def __init__(self,rect,style=DEFAULT_STYLE,select=False,select_function=_nothing_):
+        super().__init__(rect,style)
+        self.select = True
+        self.selecting = False
+        self.selecting_rect = None
+        self.sfunc = select_function
+
 class ContentBox(BaseElement):
     def __init__(self,rect,style=DEFAULT_STYLE,content=pygame.Surface((0,0))):
         super().__init__(rect,style=style)
