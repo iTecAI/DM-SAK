@@ -22,11 +22,15 @@ def pr():
 
 class BaseElement:
     def __init__(self,rect,style=DEFAULT_STYLE):
+        global DEFAULT_STYLE
         self.pos = rect.topleft
         self.size = rect.size
         self.surface = pygame.Surface(self.size,pygame.SRCALPHA)
         self.children = []
         self.style = style
+        for k in DEFAULT_STYLE.keys():
+            if not k in self.style.keys():
+                self.style[k] = DEFAULT_STYLE[k]
     
     def add_child(self,child):
         self.children.append(child)
@@ -58,15 +62,15 @@ class ContentBox(BaseElement):
         self.rect = pygame.Rect(self.pos,self.surface.get_rect().size)
         size = content.get_size()
         
-        if size[0] > self.rect.size[0]:
+        if size[0]+2*self.style['padding'] > self.rect.size[0]:
             self.rect.w = size[0]+2*self.style['padding']
-        if size[1] > self.rect.size[1]:
+        if size[1]+2*self.style['padding'] > self.rect.size[1]:
             self.rect.h = size[1]+2*self.style['padding']
         self.size = self.rect.size
 
         self.surface = pygame.Surface(self.rect.size,pygame.SRCALPHA)
         self.surface.fill(self.style['background_color'])
-        self.content_surface_pos = [(self.rect.w/2) - content.get_width()/2+self.style['padding'],(self.rect.h/2) - content.get_height()/2+self.style['padding']]
+        self.content_surface_pos = [(self.rect.w/2) - content.get_width()/2,(self.rect.h/2) - content.get_height()/2]
         self.surface.blit(content,self.content_surface_pos)
 
     
