@@ -14,17 +14,36 @@ DEFAULT_STYLE = dict(
     padding=5
 )
 
+def cap(val,mini,maxi):
+    if val < mini:
+        val = mini
+    if val > maxi:
+        val = maxi
+    return val
+
 def _nothing_():
     pass
 
+def default_args_func(*args):
+    print(args)
+
 def pr():
     print('click')
+
+class AdvancedSurface(pygame.Surface):
+    pass
+
+def make_advanced(size,name):
+    s = AdvancedSurface(size)
+    setattr(s,'name',name)
+    return s
 
 class BaseElement:
     def __init__(self,rect,style=DEFAULT_STYLE):
         global DEFAULT_STYLE
         self.pos = rect.topleft
         self.size = rect.size
+        self.rect = rect
         self.surface = pygame.Surface(self.size,pygame.SRCALPHA)
         self.children = []
         self.style = style
@@ -55,13 +74,44 @@ class BaseElement:
 
         return Available
 
-class Frame(BaseElement):
-    def __init__(self,rect,style=DEFAULT_STYLE,select=False,select_function=_nothing_):
-        super().__init__(rect,style)
-        self.select = True
-        self.selecting = False
-        self.selecting_rect = None
-        self.sfunc = select_function
+class ScrollingAreaVertical(BaseElement):
+    def __init__(self,rect,style=DEFAULT_STYLE,surfaces=[],function=default_args_func):
+        super().__init__(rect,style=style)
+        self.surfaces = surfaces
+        self.func = function
+        self.scroll_position = 0
+        self.scroll_position_max = 0
+        self.button_positions = {}
+
+    def render(self):
+        self.surface.fill(self.style['background_color'])
+        self.button_positions = {}
+        #get total size of surfaces
+        sz = self.style['padding']*2*len(self.surfaces)
+        y = 0-self.scroll_position+self.style['padding']
+        for s in self.surfaces:
+            sz += s.get_height()
+            self.button_positions[(self.surface.get_width()/2-s.get_width()/2,y)] = s
+            self.surface.blit(s,(self.surface.get_width()/2-s.get_width()/2,y))
+            y += 2*self.style['padding']+s.get_height()
+        
+        self.scroll_position_max = sz
+        return self.surface
+    
+    def check(self,events):
+        for e in events:
+            if e.type == pygame.MOUSEBUTTONDOWN:
+                if self.rect.collidepoint(e.pos):
+                    if e.button == 1:
+                        for i in self.button_positions.keys():
+                            if pygame.Rect(i,self.button_positions[i].get_size()).collidepoint(e.pos):
+                                self.func(self.button_positions[i].name)
+                    if e.button == 4:
+                        self.scroll_position = cap(self.scroll_position+5,0,self.scroll_position_max)
+                    if e.button == 5:
+                        self.scroll_position = cap(self.scroll_position-5,0,self.scroll_position_max)
+                
+
 
 class ContentBox(BaseElement):
     def __init__(self,rect,style=DEFAULT_STYLE,content=pygame.Surface((0,0))):
